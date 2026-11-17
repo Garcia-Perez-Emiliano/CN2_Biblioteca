@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h4 class="mb-0">{{ 'Editar libro' if libro else 'Nuevo libro' }}</h4>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="titulo" class="form-label">Título *</label>
+              <input type="text" id="titulo" name="titulo" maxlength="200" required
+                     class="form-control" value="{{ datos.get('titulo', '') }}">
+            </div>
+            <div class="col-md-6">
+              <label for="autor" class="form-label">Autor *</label>
+              <input type="text" id="autor" name="autor" maxlength="150" required
+                     class="form-control" value="{{ datos.get('autor', '') }}">
+            </div>
+            <div class="col-md-6">
+              <label for="isbn" class="form-label">ISBN *</label>
+              <input type="text" id="isbn" name="isbn" maxlength="20" required
+                     class="form-control" placeholder="978-0-262-04630-5"
+                     value="{{ datos.get('isbn', '') }}">
+              <div class="form-text">10 o 13 dígitos; los guiones son opcionales.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="editorial" class="form-label">Editorial</label>
+              <input type="text" id="editorial" name="editorial" maxlength="100"
+                     class="form-control" value="{{ datos.get('editorial', '') }}">
+            </div>
+            <div class="col-md-6">
+              <label for="categoria" class="form-label">Categoría</label>
+              <input type="text" id="categoria" name="categoria" maxlength="80"
+                     class="form-control" value="{{ datos.get('categoria', '') }}">
+            </div>
+            <div class="col-md-6">
+              <label for="anio_publicacion" class="form-label">Año de publicación</label>
+              <input type="number" id="anio_publicacion" name="anio_publicacion" min="1000" max="2100"
+                     class="form-control" value="{{ datos.get('anio_publicacion', '') }}">
+            </div>
+            <div class="col-md-6">
+              <label for="ejemplares_totales" class="form-label">Ejemplares totales *</label>
+              <input type="number" id="ejemplares_totales" name="ejemplares_totales" min="0" required
+                     class="form-control" value="{{ datos.get('ejemplares_totales', '') }}">
+              {% if libro %}
+              <div class="form-text">
+                Disponibles ahora: {{ libro.ejemplares_disponibles }}.
+                Al cambiar el total, los disponibles se ajustan solos.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{{ url_for('libros.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
