@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h4 class="mb-0">Nuevo préstamo</h4>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          <div class="row g-3">
+            <div class="col-12">
+              <label for="libro_id" class="form-label">Libro (solo con ejemplares disponibles) *</label>
+              <select id="libro_id" name="libro_id" class="form-select" required>
+                <option value="">-- Selecciona un libro --</option>
+                {% for libro in libros %}
+                <option value="{{ libro.id }}" {{ 'selected' if datos.get('libro_id')|string == libro.id|string }}>
+                  {{ libro.titulo }} — {{ libro.autor }} ({{ libro.ejemplares_disponibles }} disp.)
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label for="lector_id" class="form-label">Lector activo *</label>
+              <select id="lector_id" name="lector_id" class="form-select" required>
+                <option value="">-- Selecciona un lector --</option>
+                {% for lector in lectores %}
+                <option value="{{ lector.id }}" {{ 'selected' if datos.get('lector_id')|string == lector.id|string }}>
+                  {{ lector.apellidos }}, {{ lector.nombre }}{% if lector.matricula %} ({{ lector.matricula }}){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="fecha_prestamo" class="form-label">Fecha de préstamo *</label>
+              <input type="date" id="fecha_prestamo" name="fecha_prestamo" required
+                     class="form-control" value="{{ datos.get('fecha_prestamo', '') }}">
+            </div>
+
+            <div class="col-md-6">
+              <label for="fecha_devolucion_esperada" class="form-label">Fecha de devolución esperada *</label>
+              <input type="date" id="fecha_devolucion_esperada" name="fecha_devolucion_esperada" required
+                     class="form-control" value="{{ datos.get('fecha_devolucion_esperada', '') }}">
+            </div>
+
+            <div class="col-12">
+              <label for="observaciones" class="form-label">Observaciones</label>
+              <textarea id="observaciones" name="observaciones" rows="3"
+                        class="form-control" placeholder="Estado físico del libro, notas adicionales...">{{ datos.get('observaciones', '') }}</textarea>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <a href="{{ url_for('prestamos.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Registrar préstamo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
