@@ -73,7 +73,23 @@
                     </td>
 
                     <td class="text-end">
-                        Editar / Eliminar
+                        <td class="text-end text-nowrap">
+                            <a href="{{ url_for('lectores.editar', lector_id=lector.id) }}"
+                            class="btn btn-sm btn-outline-primary">
+                            Editar
+                        </a>
+                        
+                        <form method="post"
+                        action="{{ url_for('lectores.eliminar', lector_id=lector.id) }}"
+                        class="d-inline"
+                        onsubmit="return confirm('¿Eliminar a este lector?');">
+                        
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger">
+                        Eliminar
+                    </button>
+                </form>
+                        </td>
                     </td>
 
                 </tr>

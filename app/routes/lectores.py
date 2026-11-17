@@ -189,11 +189,111 @@ def nuevo():
     )
 
 
-@lectores_bp.route("/<int:lector_id>/editar")
+@lectores_bp.route("/<int:lector_id>/editar", methods=["GET", "POST"])
 def editar(lector_id):
-    return f"Editar lector {lector_id}"
 
+    lector = db.get_or_404(
+        Lector,
+        lector_id
+    )
+
+    if request.method == "POST":
+
+        datos, errores = _validar(
+            request.form,
+            lector
+        )
+
+        if not errores:
+
+            _aplicar(
+                lector,
+                datos
+            )
+
+            try:
+
+                db.session.commit()
+
+            except IntegrityError:
+
+                db.session.rollback()
+
+                errores.append(
+                    "No se pudo actualizar el lector."
+                )
+
+            else:
+
+                flash(
+                    f"Lector «{lector.nombre} {lector.apellidos}» actualizado.",
+                    "success"
+                )
+
+                return redirect(
+                    url_for("lectores.index")
+                )
+
+        db.session.rollback()
+
+        for e in errores:
+            flash(e, "danger")
+
+        return render_template(
+            "lectores/form.html",
+            lector=lector,
+            datos=datos
+        )
+
+    datos = {
+        "nombre": lector.nombre,
+        "apellidos": lector.apellidos,
+        "correo": lector.correo,
+        "telefono": lector.telefono or "",
+        "matricula": lector.matricula,
+        "activo": lector.activo,
+    }
+
+    return render_template(
+        "lectores/form.html",
+        lector=lector,
+        datos=datos
+    )
 
 @lectores_bp.route("/<int:lector_id>/eliminar", methods=["POST"])
 def eliminar(lector_id):
-    return f"Eliminar lector {lector_id}"
+
+    lector = db.get_or_404(
+        Lector,
+        lector_id
+    )
+
+    nombre_completo = (
+        f"{lector.nombre} {lector.apellidos}"
+    )
+
+    try:
+
+        db.session.delete(lector)
+
+        db.session.commit()
+
+    except IntegrityError:
+
+        db.session.rollback()
+
+        flash(
+            f"No se puede eliminar al lector «{nombre_completo}».",
+            "warning"
+        )
+
+    else:
+
+        flash(
+            f"Lector «{nombre_completo}» eliminado.",
+            "success"
+        )
+
+    return redirect(
+        url_for("lectores.index")
+    )
