@@ -16,6 +16,7 @@ DIAS_PRESTAMO_DEFAULT = 7
 def _parsear_fecha(valor):
     if not valor:
         return None
+
     try:
         return datetime.strptime(valor, "%Y-%m-%d").date()
     except ValueError:
@@ -24,44 +25,69 @@ def _parsear_fecha(valor):
 
 def _validar(form):
     """Valida el formulario de nuevo préstamo. Devuelve (datos, errores)."""
+
     datos = {
         "libro_id": form.get("libro_id", "").strip(),
         "lector_id": form.get("lector_id", "").strip(),
         "fecha_prestamo": form.get("fecha_prestamo", "").strip(),
-        "fecha_devolucion_esperada": form.get("fecha_devolucion_esperada", "").strip(),
+        "fecha_devolucion_esperada": form.get(
+            "fecha_devolucion_esperada", ""
+        ).strip(),
         "observaciones": form.get("observaciones", "").strip(),
     }
+
     errores = []
 
+    # Validar libro
     libro = None
+
     if not datos["libro_id"].isdigit():
         errores.append("Debes seleccionar un libro válido.")
     else:
         libro = db.session.get(Libro, int(datos["libro_id"]))
+
         if not libro:
             errores.append("El libro seleccionado no existe.")
         elif libro.ejemplares_disponibles <= 0:
-            errores.append(f"No hay ejemplares disponibles de «{libro.titulo}».")
+            errores.append(
+                f"No hay ejemplares disponibles de «{libro.titulo}»."
+            )
 
+    # Validar lector
     lector = None
+
     if not datos["lector_id"].isdigit():
         errores.append("Debes seleccionar un lector válido.")
     else:
         lector = db.session.get(Lector, int(datos["lector_id"]))
+
         if not lector:
             errores.append("El lector seleccionado no existe.")
-        elif hasattr(lector, "activo") and not lector.activo:
-            errores.append(f"El lector {lector.nombre} {lector.apellidos} está inactivo.")
+        elif not lector.activo:
+            errores.append(
+                f"El lector {lector.nombre} {lector.apellidos} está inactivo."
+            )
 
+    # Validar fechas
     f_prestamo = _parsear_fecha(datos["fecha_prestamo"])
-    f_esperada = _parsear_fecha(datos["fecha_devolucion_esperada"])
+    f_esperada = _parsear_fecha(
+        datos["fecha_devolucion_esperada"]
+    )
 
     if not f_prestamo:
-        errores.append("La fecha de préstamo es obligatoria y debe ser válida.")
+        errores.append(
+            "La fecha de préstamo es obligatoria y debe ser válida."
+        )
+
     if not f_esperada:
-        errores.append("La fecha de devolución esperada es obligatoria y debe ser válida.")
+        errores.append(
+            "La fecha de devolución esperada es obligatoria y debe ser válida."
+        )
+
     if f_prestamo and f_esperada and f_esperada < f_prestamo:
-        errores.append("La fecha de devolución esperada no puede ser anterior al préstamo.")
+        errores.append(
+            "La fecha de devolución esperada no puede ser anterior al préstamo."
+        )
 
     datos_limpios = {
         **datos,
@@ -70,6 +96,7 @@ def _validar(form):
         "_f_prestamo": f_prestamo,
         "_f_esperada": f_esperada,
     }
+
     return datos_limpios, errores
 
 
@@ -85,16 +112,27 @@ def index():
         .join(Prestamo.lector)
     )
 
-    if estado in ("ACTIVO", "DEVUELTO"):
-        consulta = consulta.where(Prestamo.estado == estado)
+    # Filtrar por estado
+    if estado in ("ACTIVO", "VIGENTE"):
+        consulta = consulta.where(
+            Prestamo.estado == "vigente"
+        )
+
+    elif estado == "DEVUELTO":
+        consulta = consulta.where(
+            Prestamo.estado == "devuelto"
+        )
+
     elif estado == "VENCIDO":
         consulta = consulta.where(
-            Prestamo.estado == "ACTIVO",
+            Prestamo.estado == "vigente",
             Prestamo.fecha_devolucion_esperada < date.today(),
         )
 
+    # Buscar por libro o lector
     if q:
         patron = f"%{q}%"
+
         consulta = consulta.where(
             db.or_(
                 Libro.titulo.ilike(patron),
@@ -106,11 +144,15 @@ def index():
         )
 
     paginacion = db.paginate(
-        consulta.order_by(Prestamo.estado.asc(), Prestamo.fecha_devolucion_esperada.asc()),
+        consulta.order_by(
+            Prestamo.estado.asc(),
+            Prestamo.fecha_devolucion_esperada.asc()
+        ),
         page=pagina,
         per_page=POR_PAGINA,
         error_out=False,
     )
+
     return render_template(
         "prestamos/index.html",
         paginacion=paginacion,
@@ -122,75 +164,129 @@ def index():
 
 @prestamos_bp.route("/nuevo", methods=["GET", "POST"])
 def nuevo():
+
     libros = db.session.scalars(
-        db.select(Libro).where(Libro.ejemplares_disponibles > 0).order_by(Libro.titulo)
+        db.select(Libro)
+        .where(Libro.ejemplares_disponibles > 0)
+        .order_by(Libro.titulo)
     ).all()
+
     lectores = db.session.scalars(
-        db.select(Lector).where(Lector.activo == True).order_by(Lector.apellidos, Lector.nombre)
+        db.select(Lector)
+        .where(Lector.activo.is_(True))
+        .order_by(Lector.apellidos, Lector.nombre)
     ).all()
 
     if request.method == "POST":
+
         datos, errores = _validar(request.form)
+
         if not errores:
+
             libro = datos["_libro"]
+
             prestamo = Prestamo(
                 libro_id=libro.id,
                 lector_id=datos["_lector"].id,
                 fecha_prestamo=datos["_f_prestamo"],
                 fecha_devolucion_esperada=datos["_f_esperada"],
-                estado="ACTIVO",
+                estado="vigente",
                 observaciones=datos["observaciones"] or None,
             )
-            # Descontar ejemplar disponible
-            libro.ejemplares_disponibles -= 1
+
+            # PostgreSQL descuenta automáticamente el ejemplar
+            # mediante el trigger trg_prestamos_disponibles.
 
             db.session.add(prestamo)
+
             try:
                 db.session.commit()
-            except IntegrityError:
+
+            except IntegrityError as e:
                 db.session.rollback()
-                flash("Error de integridad al registrar el préstamo.", "danger")
+
+                print(
+                    f"ERROR DE INTEGRIDAD AL REGISTRAR PRÉSTAMO: {e.orig}"
+                )
+
+                flash(
+                    "Error de integridad al registrar el préstamo.",
+                    "danger"
+                )
+
             else:
-                flash(f"Préstamo de «{libro.titulo}» registrado correctamente.", "success")
+                flash(
+                    f"Préstamo de «{libro.titulo}» registrado correctamente.",
+                    "success"
+                )
+
                 return redirect(url_for("prestamos.index"))
 
-        for e in errores:
-            flash(e, "danger")
+        for error in errores:
+            flash(error, "danger")
+
         return render_template(
-            "prestamos/form.html", libros=libros, lectores=lectores, datos=datos
+            "prestamos/form.html",
+            libros=libros,
+            lectores=lectores,
+            datos=datos
         )
 
     hoy = date.today()
+
     datos_iniciales = {
         "fecha_prestamo": hoy.isoformat(),
-        "fecha_devolucion_esperada": (hoy + timedelta(days=DIAS_PRESTAMO_DEFAULT)).isoformat(),
+        "fecha_devolucion_esperada": (
+            hoy + timedelta(days=DIAS_PRESTAMO_DEFAULT)
+        ).isoformat(),
     }
+
     return render_template(
-        "prestamos/form.html", libros=libros, lectores=lectores, datos=datos_iniciales
+        "prestamos/form.html",
+        libros=libros,
+        lectores=lectores,
+        datos=datos_iniciales
     )
 
 
 @prestamos_bp.route("/<int:prestamo_id>/devolver", methods=["POST"])
 def devolver(prestamo_id):
+
     prestamo = db.get_or_404(Prestamo, prestamo_id)
 
-    if prestamo.estado == "DEVUELTO":
-        flash("Este préstamo ya fue marcado como devuelto anteriormente.", "warning")
+    if prestamo.estado == "devuelto":
+        flash(
+            "Este préstamo ya fue marcado como devuelto anteriormente.",
+            "warning"
+        )
+
         return redirect(url_for("prestamos.index"))
 
-    prestamo.estado = "DEVUELTO"
+    prestamo.estado = "devuelto"
     prestamo.fecha_devolucion_real = date.today()
 
-    # Devolver el ejemplar al inventario disponible
-    if prestamo.libro.ejemplares_disponibles < prestamo.libro.ejemplares_totales:
-        prestamo.libro.ejemplares_disponibles += 1
+    # PostgreSQL incrementa automáticamente el inventario
+    # mediante el trigger trg_prestamos_disponibles.
 
     try:
         db.session.commit()
-    except IntegrityError:
+
+    except IntegrityError as e:
         db.session.rollback()
-        flash("No se pudo registrar la devolución por un error en la base de datos.", "danger")
+
+        print(
+            f"ERROR DE INTEGRIDAD AL REGISTRAR DEVOLUCIÓN: {e.orig}"
+        )
+
+        flash(
+            "No se pudo registrar la devolución por un error en la base de datos.",
+            "danger"
+        )
+
     else:
-        flash(f"Devolución de «{prestamo.libro.titulo}» registrada.", "success")
+        flash(
+            f"Devolución de «{prestamo.libro.titulo}» registrada.",
+            "success"
+        )
 
     return redirect(url_for("prestamos.index"))

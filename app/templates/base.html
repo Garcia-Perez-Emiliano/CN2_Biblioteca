@@ -20,6 +20,8 @@
                     <li class="nav-item"><a class="nav-link {{ 'active' if request.blueprint == 'libros' }}" href="{{ url_for('libros.index') }}">Libros</a></li>
                     <!-- Los enlaces de Lectores y Préstamos aparecerán cuando los demás integren sus módulos -->
                     <li class="nav-item"><a class="nav-link {{ 'active' if request.blueprint == 'lectores' }}"href="{{ url_for('lectores.index') }}">Lectores</a></li>
+                    <li class="nav-item"><a class="nav-link {{ 'active' if request.blueprint == 'prestamos' }}"href="{{ url_for('prestamos.index') }}">Prestamos</a></li>
+
                 </ul>
             </div>
         </div>
