@@ -5,7 +5,10 @@ from app import db
 class Lector(db.Model):
     __tablename__ = "lectores"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
     nombre = db.Column(
         db.String(100),
@@ -32,7 +35,7 @@ class Lector(db.Model):
 
     matricula = db.Column(
         db.String(30),
-        nullable=False,
+        nullable=True,
         unique=True,
         index=True
     )
