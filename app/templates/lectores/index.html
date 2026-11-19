@@ -1,0 +1,150 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+
+    <h2 class="mb-0">👤 Lectores</h2>
+
+    <a href="{{ url_for('lectores.nuevo') }}"
+       class="btn btn-success">
+        + Nuevo lector
+    </a>
+
+</div>
+
+<!-- Buscador -->
+<form method="get" class="row g-2 mb-3">
+
+    <div class="col-sm-9 col-md-10">
+
+        <input type="search"
+               name="q"
+               value="{{ q }}"
+               class="form-control"
+               placeholder="Buscar por nombre, apellidos, correo o matrícula">
+
+    </div>
+
+    <div class="col-sm-3 col-md-2 d-grid">
+
+        <button class="btn btn-outline-secondary" type="submit">
+            Buscar
+        </button>
+
+    </div>
+
+</form>
+
+<!-- Tabla de lectores -->
+<div class="card shadow-sm">
+
+    <div class="table-responsive">
+
+        <table class="table table-hover align-middle mb-0">
+
+            <thead class="table-light">
+
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Matrícula</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th class="text-end text-nowrap">Acciones</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for lector in paginacion.items %}
+
+                <tr>
+
+                    <!-- Nombre -->
+                    <td>
+                        <span class="fw-semibold">
+                            {{ lector.nombre }} {{ lector.apellidos }}
+                        </span>
+                    </td>
+
+                    <!-- Correo -->
+                    <td>
+                        {{ lector.correo }}
+                    </td>
+
+                    <!-- Matrícula -->
+                    <td>
+                        <code>{{ lector.matricula }}</code>
+                    </td>
+
+                    <!-- Teléfono -->
+                    <td>
+                        {{ lector.telefono or '—' }}
+                    </td>
+
+                    <!-- Estado -->
+                    <td>
+                        <span class="badge {{ 'text-bg-success' if lector.activo else 'text-bg-secondary' }}">
+                            {{ 'Activo' if lector.activo else 'Inactivo' }}
+                        </span>
+                    </td>
+
+                    <!-- Acciones -->
+                    <td class="text-end text-nowrap">
+
+                        <a href="{{ url_for('lectores.editar', lector_id=lector.id) }}"
+                           class="btn btn-sm btn-outline-primary">
+                            Editar
+                        </a>
+
+                        <form method="post"
+                              action="{{ url_for('lectores.eliminar', lector_id=lector.id) }}"
+                              class="d-inline"
+                              onsubmit="return confirm('¿Eliminar a este lector?');">
+
+                            <button type="submit"
+                                    class="btn btn-sm btn-outline-danger">
+                                Eliminar
+                            </button>
+
+                        </form>
+
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="6" class="text-center text-muted py-4">
+
+                        {% if q %}
+                            No se encontraron lectores para «{{ q }}».
+                        {% else %}
+                            Aún no hay lectores registrados.
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<!-- Total de lectores -->
+<p class="text-muted small text-center mt-3">
+    {{ paginacion.total }} lector(es)
+</p>
+
+{% endblock %}
